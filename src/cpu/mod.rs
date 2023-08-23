@@ -1,11 +1,11 @@
 //use crate::alert;
-use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual};
+use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call};
 
 const VF: usize = 15;
 pub struct CPU{
     pub regs: [u8; 16],
     pub index_reg: usize,
-    pub stack: [u16; 16],
+    pub stack: [usize; 16],
     pub sp: usize,
     pub pc: usize,
     pub memory: Vec<u8>,
@@ -27,6 +27,8 @@ enum Instruction{
     SkipIfRegDoesNotContains{register:usize, value:u8},
     SkipIfEqual{x_reg:usize, y_reg:usize},
     SkipIfNotEqual{x_reg:usize, y_reg:usize},
+    Return,
+    Call{addr:usize},
 }
 
 static FONT_ARRAY: [u8; 80] = [
@@ -81,15 +83,18 @@ impl CPU{
         // Decode
         let decoded_instruction = match instruction {
             0x00E0 => ClearScreen, // Clear Screen 0x00E0
+            0x00EE => Return, // Return 0x00EE
             a if a & 0x0F000 == 0x01000 => Jump {addr: a&0x0FFF}, // Jump 0x1NNN
-            a if a & 0x0F000 == 0x06000 => SetRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Set Register 0x6XNN
-            a if a & 0x0F000 == 0x07000 => AddToRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Add to Register 0x7XNN
-            a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
-            a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
+            a if a & 0x0F000 == 0x02000 => Call {addr: a&0x0FFF}, // Call 0x2NNN
             a if a & 0x0F000 == 0x03000 => SkipIfRegContains {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Skip Next Instruction if register contains value 0x3XNN
             a if a & 0x0F000 == 0x04000 => SkipIfRegDoesNotContains {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Skip Next Instruction if register does not contains value 0x4XNN
             a if a & 0x0F000 == 0x05000 => SkipIfEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are equal 0x5XY0
+            a if a & 0x0F000 == 0x06000 => SetRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Set Register 0x6XNN
+            a if a & 0x0F000 == 0x07000 => AddToRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Add to Register 0x7XNN
             a if a & 0x0F000 == 0x09000 => SkipIfNotEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are not equal 0x9XY0
+            a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
+            a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
+
             _ => NOP // No Operation
         };
         //alert(format!("{:#04x}, {:?}", instruction, decoded_instruction).as_str());
@@ -168,6 +173,16 @@ impl CPU{
                 }
                 self.pc += 2;
             },
+            Call{addr} => {
+                self.stack[self.sp] = self.pc;
+                self.sp += 1;
+                self.pc = addr;
+            },
+            Return => {
+                self.sp -= 1;
+                self.pc = self.stack[self.sp];
+                self.pc += 2;
+            }
         };
 
     }
