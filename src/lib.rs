@@ -46,7 +46,7 @@ pub fn run() -> Vec<Boolean>{
 
     let mut chip8 = CHIP8.lock().unwrap();
 
-    for _ in 0..1000{
+    for _ in 0..1_000{
         chip8.run_cycle();
     }
 

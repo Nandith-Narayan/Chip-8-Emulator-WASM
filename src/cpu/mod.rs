@@ -1,4 +1,4 @@
-use crate::alert;
+//use crate::alert;
 use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister};
 
 const VF: usize = 15;

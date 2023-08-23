@@ -1,0 +1,17 @@
+{
+  "name": "chip_8_wasm",
+  "collaborators": [
+    "nandi <nandith2ndemail@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "chip_8_wasm_bg.wasm",
+    "chip_8_wasm.js",
+    "chip_8_wasm.d.ts"
+  ],
+  "module": "chip_8_wasm.js",
+  "types": "chip_8_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
