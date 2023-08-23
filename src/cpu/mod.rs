@@ -1,7 +1,11 @@
 pub struct CPU{
 
-
-    pub memory: Vec<u8>
+    pub stack: [u16; 16],
+    pub sp: usize,
+    pub pc: usize,
+    pub memory: Vec<u8>,
+    pub delay_timer: u8,
+    pub sound_timer: u8,
 }
 
 static FONT_ARRAY: [u8; 80] = [
@@ -31,7 +35,12 @@ pub fn init() ->CPU{
 
 
     return CPU{
-        memory
+        stack: [0; 16],
+        sp: 0,
+        pc: 0,
+        memory,
+        delay_timer: 0,
+        sound_timer: 0,
     };
 }
 

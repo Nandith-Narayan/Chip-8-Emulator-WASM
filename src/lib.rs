@@ -4,6 +4,7 @@ mod cpu;
 use wasm_bindgen::prelude::*;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
+use js_sys::Uint8Array;
 
 use crate::cpu::CPU;
 
@@ -24,11 +25,11 @@ extern {
 }
 
 #[wasm_bindgen]
-pub fn greet() {
+pub fn greet(rom: &Uint8Array, len: i32) {
 
     let mut chip8 = CHIP8.lock().unwrap();
     chip8.memory[0]=2;
 
-    alert(format!("Hello, World! {}", chip8.memory[0]).as_str());
+    alert(format!("Hello, World! {}", len).as_str());
 
 }
