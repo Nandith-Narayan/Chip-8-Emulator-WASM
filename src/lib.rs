@@ -3,6 +3,7 @@ mod cpu;
 
 use wasm_bindgen::prelude::*;
 use lazy_static::lazy_static;
+use std::sync::Mutex;
 
 use crate::cpu::CPU;
 
@@ -14,7 +15,7 @@ use crate::cpu::CPU;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 lazy_static! {
-    static ref CHIP8: CPU = cpu::init();
+    static ref CHIP8: Mutex<CPU> = Mutex::new(cpu::init());
 }
 
 #[wasm_bindgen]
@@ -24,5 +25,10 @@ extern {
 
 #[wasm_bindgen]
 pub fn greet() {
-    alert(format!("Hello, World! {}", CHIP8.memory.len()).as_str());
+
+    let mut chip8 = CHIP8.lock().unwrap();
+    chip8.memory[0]=2;
+
+    alert(format!("Hello, World! {}", chip8.memory[0]).as_str());
+
 }
