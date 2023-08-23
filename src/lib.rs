@@ -15,5 +15,5 @@ extern {
 
 #[wasm_bindgen]
 pub fn greet() {
-    alert("Hello, chip_8_wasm!");
+    alert("Hello, World!");
 }
