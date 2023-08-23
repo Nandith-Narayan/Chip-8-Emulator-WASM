@@ -1,5 +1,5 @@
 //use crate::alert;
-use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister};
+use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual};
 
 const VF: usize = 15;
 pub struct CPU{
@@ -22,7 +22,11 @@ enum Instruction{
     SetRegister{register:usize, value:u8},
     AddToRegister{register:usize, value:u8},
     SetIndexRegister{addr: usize},
-    Display{x_reg:usize, y_reg:usize, n:usize}
+    Display{x_reg:usize, y_reg:usize, n:usize},
+    SkipIfRegContains{register:usize, value:u8},
+    SkipIfRegDoesNotContains{register:usize, value:u8},
+    SkipIfEqual{x_reg:usize, y_reg:usize},
+    SkipIfNotEqual{x_reg:usize, y_reg:usize},
 }
 
 static FONT_ARRAY: [u8; 80] = [
@@ -82,12 +86,16 @@ impl CPU{
             a if a & 0x0F000 == 0x07000 => AddToRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Add to Register 0x7XNN
             a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
             a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
-            _ => Instruction::NOP // No Operation
+            a if a & 0x0F000 == 0x03000 => SkipIfRegContains {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Skip Next Instruction if register contains value 0x3XNN
+            a if a & 0x0F000 == 0x04000 => SkipIfRegDoesNotContains {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Skip Next Instruction if register does not contains value 0x4XNN
+            a if a & 0x0F000 == 0x05000 => SkipIfEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are equal 0x5XY0
+            a if a & 0x0F000 == 0x09000 => SkipIfNotEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are not equal 0x9XY0
+            _ => NOP // No Operation
         };
         //alert(format!("{:#04x}, {:?}", instruction, decoded_instruction).as_str());
         // Execute
         match decoded_instruction{
-            Instruction::NOP => {
+            NOP => {
                 self.pc += 2;
             },
             ClearScreen => {
@@ -133,6 +141,30 @@ impl CPU{
                         x+=1;
                     }
                     y+=1;
+                }
+                self.pc += 2;
+            },
+            SkipIfRegContains {register, value} => {
+                if self.regs[register] == value{
+                    self.pc += 2;
+                }
+                self.pc += 2;
+            },
+            SkipIfRegDoesNotContains {register, value} => {
+                if self.regs[register] != value{
+                    self.pc += 2;
+                }
+                self.pc += 2;
+            },
+            SkipIfEqual {x_reg, y_reg} => {
+                if self.regs[x_reg] == self.regs[y_reg]{
+                    self.pc += 2;
+                }
+                self.pc += 2;
+            },
+            SkipIfNotEqual {x_reg, y_reg} => {
+                if self.regs[x_reg] != self.regs[y_reg]{
+                    self.pc += 2;
                 }
                 self.pc += 2;
             },
