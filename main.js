@@ -1,5 +1,6 @@
 import init, {
-    initialize_rom
+    initialize_rom,
+    run
 }
 from "./pkg/chip_8_wasm.js";
 
@@ -14,6 +15,20 @@ const runWasm = async() => {
 
     console.log(data.length);
     initialize_rom(data);
+    let displayArr = run();
+    console.log(displayArr);
+    let ctx = document.getElementById("canvas").getContext("2d");
+    canvas.style.backgroundColor = "black";
+    ctx.clearRect(0, 0, 640, 320);
+    for (let i = 0; i < 32 * 64; i++) {
+        let x = i % 64;
+        let y = Math.floor(i / 64);
+
+        ctx.fillStyle = "white";
+        if (displayArr[i]) {
+            ctx.fillRect(x*10, y*10, 10, 10);
+        }
+    }
 
 };
 
@@ -25,13 +40,12 @@ fileSelector.addEventListener('change', (event) => {
     let reader = new FileReader();
     reader.onload = function (e) {
         // binary data
-        let utf8Encode = new TextEncoder();
-        data = utf8Encode.encode(e.target.result);
+        data = new Uint8Array(e.target.result);
         runWasm();
     };
     reader.onerror = function (e) {
         // error occurred
         console.log('Error : ' + e.type);
     };
-    reader.readAsBinaryString(rom);
+    reader.readAsArrayBuffer(rom);
 });

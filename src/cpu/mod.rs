@@ -1,5 +1,7 @@
+use crate::alert;
 use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister};
 
+const VF: usize = 15;
 pub struct CPU{
     pub regs: [u8; 16],
     pub index_reg: usize,
@@ -12,6 +14,7 @@ pub struct CPU{
     pub display: Vec<bool>,
 }
 
+#[derive(Debug)]
 enum Instruction{
     NOP,
     ClearScreen,
@@ -45,7 +48,7 @@ pub fn init() ->CPU{
 
     let mut memory = vec![0; 4096];
 
-    memory[..FONT_ARRAY.len()].copy_from_slice(&FONT_ARRAY[..]);
+    memory[..(FONT_ARRAY.len())].copy_from_slice(&FONT_ARRAY[..]);
 
 
     return CPU{
@@ -53,7 +56,7 @@ pub fn init() ->CPU{
         index_reg: 0,
         stack: [0; 16],
         sp: 0,
-        pc: 0,
+        pc: 512,
         memory,
         delay_timer: 0,
         sound_timer: 0,
@@ -63,6 +66,10 @@ pub fn init() ->CPU{
 
 impl CPU{
     pub fn run_cycle(&mut self){
+        if self.pc >= 4095{
+            return;
+        }
+
         // Fetch
         let instruction = (((self.memory[self.pc] as usize) << 8) + (self.memory[self.pc+1] as usize)) & 0x0FFFF;
 
@@ -75,17 +82,16 @@ impl CPU{
             a if a & 0x0F000 == 0x07000 => AddToRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Add to Register 0x7XNN
             a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
             a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
-            _ => Instruction::NOP
+            _ => Instruction::NOP // No Operation
         };
-
+        //alert(format!("{:#04x}, {:?}", instruction, decoded_instruction).as_str());
         // Execute
-
         match decoded_instruction{
             Instruction::NOP => {
                 self.pc += 2;
             },
             ClearScreen => {
-                self.display = vec![false; 64*32];
+                //self.display = vec![false; 64*32];
                 self.pc += 2;
             },
             Jump {addr} => {
@@ -104,7 +110,31 @@ impl CPU{
                 self.pc += 2;
             },
             Display {x_reg, y_reg, n} => {
+                //alert("hi");
 
+                let mut y = (self.regs[y_reg] % 32) as usize;
+                self.regs[VF] = 0;
+
+                for row in 0..n{
+                    let mut sprite_data = self.memory[self.index_reg+row];
+                    let mut x = (self.regs[x_reg] % 64) as usize;
+                    for _ in 0..8{
+                        let new_pixel = (sprite_data &0x080) > 0;
+                        sprite_data = sprite_data << 1;
+                        let old_pixel = self.display[x+y*64];
+                        if x < 64 && y < 32{
+                            if new_pixel && old_pixel{
+                                self.regs[VF] = 1;
+                                self.display[x+y*64] = false;
+                            }else if new_pixel && !old_pixel{
+                                self.display[x+y*64] = true;
+                            }
+                        }
+                        x+=1;
+                    }
+                    y+=1;
+                }
+                self.pc += 2;
             },
         };
 
