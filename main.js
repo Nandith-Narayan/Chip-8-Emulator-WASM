@@ -1,16 +1,19 @@
-import init from "./pkg/chip_8_wasm.js";
+import init, {
+    initialize_rom
+}
+from "./pkg/chip_8_wasm.js";
 
 let data = null;
 
 const runWasm = async() => {
-    
+
     console.log(data);
     // Instantiate wasm module
-    
-    //data = [1,2,3,4,5];
-    const chip8 = await init("./pkg/chip_8_wasm_bg.wasm");
+
+    await init("./pkg/chip_8_wasm_bg.wasm");
+
     console.log(data.length);
-    chip8.greet(data, data.length);
+    initialize_rom(data);
 
 };
 
@@ -32,5 +35,3 @@ fileSelector.addEventListener('change', (event) => {
     };
     reader.readAsBinaryString(rom);
 });
-
-
