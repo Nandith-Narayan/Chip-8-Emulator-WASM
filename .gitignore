@@ -9,3 +9,4 @@ wasm-pack.log
 .appveyor.yml
 .travis.yml
 chip_8_wasm.iml
+/roms
