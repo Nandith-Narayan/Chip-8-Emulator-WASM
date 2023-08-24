@@ -40,12 +40,12 @@ pub fn initialize_rom(rom: Vec<u8>) {
 }
 
 #[wasm_bindgen]
-pub fn run() -> Vec<Boolean>{
+pub fn run(num_cycles: usize, button_status: Vec<Boolean>) -> Vec<Boolean>{
     panic::set_hook(Box::new(console_error_panic_hook::hook));
 
     let mut chip8 = CHIP8.lock().unwrap();
 
-    for _ in 0..1_000{
+    for _ in 0..num_cycles{
         chip8.run_cycle();
     }
 

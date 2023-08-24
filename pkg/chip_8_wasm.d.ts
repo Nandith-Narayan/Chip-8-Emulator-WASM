@@ -5,16 +5,18 @@
 */
 export function initialize_rom(rom: Uint8Array): void;
 /**
+* @param {number} num_cycles
+* @param {(boolean)[]} button_status
 * @returns {(boolean)[]}
 */
-export function run(): (boolean)[];
+export function run(num_cycles: number, button_status: (boolean)[]): (boolean)[];
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly initialize_rom: (a: number, b: number) => void;
-  readonly run: (a: number) => void;
+  readonly run: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
