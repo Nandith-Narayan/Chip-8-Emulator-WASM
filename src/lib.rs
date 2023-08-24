@@ -5,7 +5,7 @@ use std::panic;
 use wasm_bindgen::prelude::*;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
-use js_sys::{Array, Boolean};
+use js_sys::Boolean;
 use crate::cpu::CPU;
 
 
