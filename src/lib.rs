@@ -48,7 +48,12 @@ pub fn run(num_cycles: usize, button_status: Vec<Boolean>) -> Vec<Boolean>{
     for i in 0..16{
         chip8.buttons[i] = button_status[i].value_of();
     }
-
+    if chip8.delay_timer > 0{
+        chip8.delay_timer -= 1;
+    }
+    if chip8.sound_timer > 0{
+        chip8.sound_timer -= 1;
+    }
     for _ in 0..num_cycles{
         chip8.run_cycle();
     }

@@ -13,6 +13,7 @@ pub struct CPU{
     pub sound_timer: u8,
     pub display: Vec<bool>,
     pub buttons: [bool; 16],
+    pub last_button: usize,
 }
 
 #[derive(Debug)]
@@ -72,6 +73,7 @@ pub fn init() ->CPU{
         sound_timer: 0,
         display: vec![false; 64*32],
         buttons: [false; 16],
+        last_button: 16,
     };
 }
 
@@ -92,6 +94,7 @@ impl CPU{
         self.sound_timer = 0;
         self.display = vec![false; 64*32];
         self.buttons = [false; 16];
+        self.last_button = 16;
     }
 
     pub fn run_cycle(&mut self){
@@ -159,8 +162,8 @@ impl CPU{
                     for _ in 0..8{
                         let new_pixel = (sprite_data &0x080) > 0;
                         sprite_data = sprite_data << 1;
-                        let old_pixel = self.display[x+y*64];
                         if x < 64 && y < 32{
+                            let old_pixel = self.display[x+y*64];
                             if new_pixel && old_pixel{
                                 self.regs[VF] = 1;
                                 self.display[x+y*64] = false;
@@ -295,17 +298,29 @@ impl CPU{
                     self.memory[self.index_reg+2] = third_digit;
                 }else if op == 0x0A{ // Get Key
                     let mut got_key = false;
+
                     for i in 0..16{
-                        if self.buttons[i]{
+                        if self.buttons[i] && self.last_button == 16{
+                            self.last_button = i;
+                            break;
+                        }else if !self.buttons[i] && self.last_button == i{
                             got_key = true;
-                            self.regs[register] = i as u8;
                             break;
                         }
                     }
                     if !got_key {
                         self.pc -= 2;
+                    }else{
+                        self.regs[register] = self.last_button as u8;
+                        self.last_button = 16;
                     }
 
+                }else if op == 0x07{ // Vx = delay timer
+                    self.regs[register] = self.delay_timer;
+                }else if op == 0x15{ // delay timer = Vx
+                    self.delay_timer = self.regs[register];
+                }else if op == 0x18{ // sound timer = Vx
+                    self.delay_timer = self.regs[register];
                 }
                 self.pc += 2;
             },

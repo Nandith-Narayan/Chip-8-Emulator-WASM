@@ -17,7 +17,7 @@ const runWasm = async() => {
     canvas.style.backgroundColor = "black";
     ctx.clearRect(0, 0, 640, 320);
     console.log(buttonStatus);
-    let displayArr = run(100, buttonStatus);
+    let displayArr = run(10, buttonStatus);
 
     for (let i = 0; i < 32 * 64; i++) {
         let x = i % 64;
