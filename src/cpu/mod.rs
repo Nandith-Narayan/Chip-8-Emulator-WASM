@@ -1,5 +1,5 @@
 //use crate::alert;
-use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call, MathOp};
+use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call, MathOp, StoreOrLoadRegs};
 
 const VF: usize = 15;
 pub struct CPU{
@@ -29,7 +29,8 @@ enum Instruction{
     SkipIfNotEqual{x_reg:usize, y_reg:usize},
     Return,
     Call{addr:usize},
-    MathOp{x_reg:usize, y_reg:usize, op:u8}
+    MathOp{x_reg:usize, y_reg:usize, op:u8},
+    StoreOrLoadRegs{register:usize, op:u8},
 }
 
 static FONT_ARRAY: [u8; 80] = [
@@ -113,7 +114,7 @@ impl CPU{
             a if a & 0x0F000 == 0x09000 => SkipIfNotEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are not equal 0x9XY0
             a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
             a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
-
+            a if a & 0x0F000 == 0x0F000 => StoreOrLoadRegs {register: (a&0x0F00)>>8, op: (a & 0x0FF) as u8}, // Set Register 0x6XNN
             _ => NOP // No Operation
         };
         //alert(format!("{:#04x}, {:?}", instruction, decoded_instruction).as_str());
@@ -218,12 +219,12 @@ impl CPU{
                     },
                     4 => { // 4: Vx = Vx + Vy
                         let result:u16 = (self.regs[x_reg] as u16) + (self.regs[y_reg] as u16);
+                        self.regs[x_reg] = (result & 0x0FF) as u8;
                         if result > 255 {
                             self.regs[VF] = 1;
                         }else{
                             self.regs[VF] = 0;
                         }
-                        self.regs[x_reg] = (result & 0x0FF) as u8;
                     },
                     5 => { // 5: Vx = Vx - Vy
                         let a = self.regs[x_reg];
@@ -247,12 +248,12 @@ impl CPU{
                         let a = self.regs[y_reg];
                         let b = self.regs[x_reg];
 
+                        self.regs[x_reg] = a.wrapping_sub(b);
+
                         self.regs[VF] = 1;
                         if b > a{
                             self.regs[VF] = 0;
                         }
-
-                        self.regs[x_reg] = a.wrapping_sub(b);
                     },
                     0xE => { // 6: Vx = Vy << 1
                         self.regs[x_reg] = self.regs[y_reg];
@@ -264,7 +265,34 @@ impl CPU{
                     _ => {}
                 };
                 self.pc += 2;
-            }
+            },
+            StoreOrLoadRegs{register, op} => {
+                if op == 0x55{ // store
+                    for i in 0..=register{
+                        self.memory[i+self.index_reg] = self.regs[i];
+                    }
+                }else if op == 0x65{ // Load
+                    for i in 0..=register{
+                        self.regs[i] = self.memory[i+self.index_reg];
+                    }
+                }else if op == 0x1E{ // Add to index
+                    self.index_reg += self.regs[register] as usize;
+                    if self.index_reg > 0x0FFF{
+                        self.index_reg = self.index_reg & 0x0FFF;
+                        self.regs[VF] = 1;
+                    }
+                }else if op == 0x33{ // Binary-coded decimal
+                    let number = self.regs[register];
+                    let first_digit = number / 100;
+                    let second_digit = (number / 10) % 10;
+                    let third_digit = number % 10;
+
+                    self.memory[self.index_reg] = first_digit;
+                    self.memory[self.index_reg+1] = second_digit;
+                    self.memory[self.index_reg+2] = third_digit;
+                }
+                self.pc += 2;
+            },
         };
 
     }
