@@ -1,5 +1,5 @@
 //use crate::alert;
-use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call, MathOp, StoreOrLoadRegs};
+use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call, MathOp, StoreOrLoadRegs, SkipKey};
 
 const VF: usize = 15;
 pub struct CPU{
@@ -12,6 +12,7 @@ pub struct CPU{
     pub delay_timer: u8,
     pub sound_timer: u8,
     pub display: Vec<bool>,
+    pub buttons: [bool; 16],
 }
 
 #[derive(Debug)]
@@ -31,6 +32,7 @@ enum Instruction{
     Call{addr:usize},
     MathOp{x_reg:usize, y_reg:usize, op:u8},
     StoreOrLoadRegs{register:usize, op:u8},
+    SkipKey{register:usize, op:u8},
 }
 
 static FONT_ARRAY: [u8; 80] = [
@@ -69,6 +71,7 @@ pub fn init() ->CPU{
         delay_timer: 0,
         sound_timer: 0,
         display: vec![false; 64*32],
+        buttons: [false; 16],
     };
 }
 
@@ -88,6 +91,7 @@ impl CPU{
         self.delay_timer = 0;
         self.sound_timer = 0;
         self.display = vec![false; 64*32];
+        self.buttons = [false; 16];
     }
 
     pub fn run_cycle(&mut self){
@@ -114,6 +118,7 @@ impl CPU{
             a if a & 0x0F000 == 0x09000 => SkipIfNotEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are not equal 0x9XY0
             a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
             a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
+            a if a & 0x0F000 == 0x0E000 => SkipKey {register: (a&0x0F00)>>8, op: (a & 0x0FF) as u8}, // Skip Key EX9E EXA1
             a if a & 0x0F000 == 0x0F000 => StoreOrLoadRegs {register: (a&0x0F00)>>8, op: (a & 0x0FF) as u8}, // Set Register 0x6XNN
             _ => NOP // No Operation
         };
@@ -124,7 +129,7 @@ impl CPU{
                 self.pc += 2;
             },
             ClearScreen => {
-                //self.display = vec![false; 64*32];
+                self.display = vec![false; 64*32];
                 self.pc += 2;
             },
             Jump {addr} => {
@@ -288,8 +293,36 @@ impl CPU{
                     self.memory[self.index_reg] = first_digit;
                     self.memory[self.index_reg+1] = second_digit;
                     self.memory[self.index_reg+2] = third_digit;
+                }else if op == 0x0A{ // Get Key
+                    let mut got_key = false;
+                    for i in 0..16{
+                        if self.buttons[i]{
+                            got_key = true;
+                            self.regs[register] = i as u8;
+                            break;
+                        }
+                    }
+                    if !got_key {
+                        self.pc -= 2;
+                    }
+
                 }
                 self.pc += 2;
+            },
+            SkipKey{register, op} => {
+                if op == 0x9E{
+                    if self.buttons[(self.regs[register] as usize) & 0xF]{
+                        self.pc += 4;
+                    }else{
+                        self.pc += 2;
+                    }
+                }else if op == 0xA1{
+                    if !self.buttons[(self.regs[register] as usize) & 0xF]{
+                        self.pc += 4;
+                    }else{
+                        self.pc += 2;
+                    }
+                }
             },
         };
 
