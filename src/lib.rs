@@ -29,9 +29,8 @@ extern {
 #[wasm_bindgen]
 pub fn initialize_rom(rom: Vec<u8>) {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
-
     let mut chip8 = CHIP8.lock().unwrap();
-
+    chip8.init();
     // Load ROM data into memory
     for i in 0..rom.len(){
         chip8.memory[i+512] = rom[i];

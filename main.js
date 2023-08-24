@@ -9,14 +9,17 @@ let ctx = document.getElementById("canvas").getContext("2d");
 canvas.style.backgroundColor = "black";
 ctx.clearRect(0, 0, 640, 320);
 
+// Instantiate wasm module
+await init("./pkg/chip_8_wasm_bg.wasm");
+
 const runWasm = async() => {
 
-    console.log(data);
-    // Instantiate wasm module
+    
 
-    await init("./pkg/chip_8_wasm_bg.wasm");
+    canvas.style.backgroundColor = "black";
+    ctx.clearRect(0, 0, 640, 320);
+    
 
-    console.log(data.length);
     initialize_rom(data);
     let displayArr = run();
     console.log(displayArr);

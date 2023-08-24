@@ -72,6 +72,23 @@ pub fn init() ->CPU{
 }
 
 impl CPU{
+    pub fn init(&mut self){
+
+        let mut memory = vec![0; 4096];
+
+        memory[..(FONT_ARRAY.len())].copy_from_slice(&FONT_ARRAY[..]);
+
+        self.regs = [0; 16];
+        self.index_reg = 0;
+        self.stack = [0; 16];
+        self.sp = 0;
+        self.pc = 512;
+        self.memory = memory;
+        self.delay_timer = 0;
+        self.sound_timer = 0;
+        self.display = vec![false; 64*32];
+    }
+
     pub fn run_cycle(&mut self){
         if self.pc >= 4095{
             return;
