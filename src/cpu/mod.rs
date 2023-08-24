@@ -1,5 +1,5 @@
 //use crate::alert;
-use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call};
+use crate::cpu::Instruction::{AddToRegister, ClearScreen, Display, Jump, SetIndexRegister, SetRegister, SkipIfRegContains, NOP, SkipIfRegDoesNotContains, SkipIfEqual, SkipIfNotEqual, Return, Call, MathOp};
 
 const VF: usize = 15;
 pub struct CPU{
@@ -29,6 +29,7 @@ enum Instruction{
     SkipIfNotEqual{x_reg:usize, y_reg:usize},
     Return,
     Call{addr:usize},
+    MathOp{x_reg:usize, y_reg:usize, op:u8}
 }
 
 static FONT_ARRAY: [u8; 80] = [
@@ -91,6 +92,7 @@ impl CPU{
             a if a & 0x0F000 == 0x05000 => SkipIfEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are equal 0x5XY0
             a if a & 0x0F000 == 0x06000 => SetRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Set Register 0x6XNN
             a if a & 0x0F000 == 0x07000 => AddToRegister {register: (a&0x0F00)>>8, value: (a & 0x0FF) as u8}, // Add to Register 0x7XNN
+            a if a & 0x0F000 == 0x08000 => MathOp {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, op: (a & 0x00F) as u8 }, // Math Operations 0x8XYN
             a if a & 0x0F000 == 0x09000 => SkipIfNotEqual {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4}, // Skip Next Instruction if registers are not equal 0x9XY0
             a if a & 0x0F000 == 0x0A000 => SetIndexRegister {addr: a&0x0FFF}, // Set Index Register 0xANNN
             a if a & 0x0F000 == 0x0D000 => Display {x_reg: (a&0x0F00)>>8, y_reg: (a&0x00F0)>>4, n: a & 0x00F}, // Display 0xDXYN
@@ -181,6 +183,69 @@ impl CPU{
             Return => {
                 self.sp -= 1;
                 self.pc = self.stack[self.sp];
+                self.pc += 2;
+            }
+            MathOp {x_reg, y_reg, op} => {
+                match op{
+                    0 => { // 0: Set Vx = Vy
+                        self.regs[x_reg] = self.regs[y_reg];
+                    },
+                    1 => { // 1: Vx = Vx OR Vy
+                        self.regs[x_reg] = self.regs[x_reg] | self.regs[y_reg];
+                    },
+                    2 => { // 2: Vx = Vx AND Vy
+                        self.regs[x_reg] = self.regs[x_reg] & self.regs[y_reg];
+                    },
+                    3 => { // 3: Vx = Vx XOR Vy
+                        self.regs[x_reg] = self.regs[x_reg] ^ self.regs[y_reg];
+                    },
+                    4 => { // 4: Vx = Vx + Vy
+                        let result:u16 = (self.regs[x_reg] as u16) + (self.regs[y_reg] as u16);
+                        if result > 255 {
+                            self.regs[VF] = 1;
+                        }else{
+                            self.regs[VF] = 0;
+                        }
+                        self.regs[x_reg] = (result & 0x0FF) as u8;
+                    },
+                    5 => { // 5: Vx = Vx - Vy
+                        let a = self.regs[x_reg];
+                        let b = self.regs[y_reg];
+
+                        self.regs[VF] = 1;
+                        if b > a{
+                            self.regs[VF] = 0;
+                        }
+
+                        self.regs[x_reg] = a.wrapping_sub(b);
+                    },
+                    6 => { // 6: Vx = Vy >> 1
+                        self.regs[x_reg] = self.regs[y_reg];
+
+                        self.regs[VF] = self.regs[x_reg] & 0x01;
+
+                        self.regs[x_reg] = self.regs[x_reg] >> 1;
+                    },
+                    7 => { // 7: Vx = Vy - Vx
+                        let a = self.regs[y_reg];
+                        let b = self.regs[x_reg];
+
+                        self.regs[VF] = 1;
+                        if b > a{
+                            self.regs[VF] = 0;
+                        }
+
+                        self.regs[x_reg] = a.wrapping_sub(b);
+                    },
+                    0xE => { // 6: Vx = Vy << 1
+                        self.regs[x_reg] = self.regs[y_reg];
+
+                        self.regs[VF] = (self.regs[x_reg] & 0x080) >> 7;
+
+                        self.regs[x_reg] = self.regs[x_reg] << 1;
+                    },
+                    _ => {}
+                };
                 self.pc += 2;
             }
         };
