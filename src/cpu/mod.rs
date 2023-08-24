@@ -230,19 +230,18 @@ impl CPU{
                         let a = self.regs[x_reg];
                         let b = self.regs[y_reg];
 
+                        self.regs[x_reg] = a.wrapping_sub(b);
+
                         self.regs[VF] = 1;
                         if b > a{
                             self.regs[VF] = 0;
                         }
-
-                        self.regs[x_reg] = a.wrapping_sub(b);
                     },
                     6 => { // 6: Vx = Vy >> 1
                         self.regs[x_reg] = self.regs[y_reg];
-
-                        self.regs[VF] = self.regs[x_reg] & 0x01;
-
+                        let flag= self.regs[x_reg] & 0x01;
                         self.regs[x_reg] = self.regs[x_reg] >> 1;
+                        self.regs[VF] = flag;
                     },
                     7 => { // 7: Vx = Vy - Vx
                         let a = self.regs[y_reg];
@@ -257,10 +256,9 @@ impl CPU{
                     },
                     0xE => { // 6: Vx = Vy << 1
                         self.regs[x_reg] = self.regs[y_reg];
-
-                        self.regs[VF] = (self.regs[x_reg] & 0x080) >> 7;
-
+                        let flag = (self.regs[x_reg] & 0x080) >> 7;
                         self.regs[x_reg] = self.regs[x_reg] << 1;
+                        self.regs[VF] = flag;
                     },
                     _ => {}
                 };
